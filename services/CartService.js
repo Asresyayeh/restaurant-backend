@@ -5,20 +5,20 @@ MenuItem.findById("68eaaddfc4706eb880dc1d59").then(console.log);
 
 const cartService = {};
 
-// Add item to cart
+
 cartService.addToCart = async (userId, menuItemId, quantity = 1) => {
-  // Find menu item first
+
   const menuItem = await MenuItem.findById(menuItemId);
   if (!menuItem) throw new Error("Menu item not found");
 
-  // Find existing cart
+ 
   let cart = await Cart.findOne({ user: userId });
 
   if (!cart) {
     cart = new Cart({ user: userId, items: [] });
   }
 
-  // Check if item already exists
+
   const existingItem = cart.items.find(
     (item) => item.menuItem.toString() === menuItemId
   );
@@ -62,7 +62,6 @@ cartService.removeItem = async (userId, menuItemId) => {
   return cart.populate("items.menuItem");
 };
 
-// Clear all items
 cartService.clearCart = async (userId) => {
   const cart = await Cart.findOne({ user: userId });
   if (!cart) return { user: userId, items: [], status: "pending" };
@@ -72,7 +71,7 @@ cartService.clearCart = async (userId) => {
   return cart;
 };
 
-// Change quantity (increase or decrease)
+
 cartService.changeQuantity = async (userId, menuItemId, increase = true) => {
   const cart = await Cart.findOne({ user: userId });
   if (!cart) return { user: userId, items: [], status: "pending" };

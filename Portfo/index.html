@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Portfolio</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
+
+    <!-- Link External CSS -->
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Your components will go here -->
+    <!-- NAVBAR -->
+
+    <nav class="navbar">
+      <div class="logo">MyPortfolio</div>
+
+      <ul class="nav-links">
+        <li><a href="#home">Home</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#projects">Projects</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </nav>
+    <!-- HERO SECTION -->
+    <section id="home" class="hero">
+      <div class="hero-content">
+        <h1>Hello, I'm <span class="highlight"> Asres</span></h1>
+        <p class="hero-subtitle">
+          Aspiring Web Developer | Learning HTML & CSS
+        </p>
+        <a href="#projects" class="btn-primary">See My Work</a>
+      </div>
+    </section>
+    <!-- ABOUT SECTION -->
+    <section id="about" class="about">
+      <h2>About Me</h2>
+      <div class="about-content">
+        <img src="myphoto.jpg" alt="Your Photo" class="about-img" />
+
+        <div class="about-text">
+          <p>
+            Hello! I am learning web development and practicing HTML & CSS
+            projects.
+          </p>
+          <p>
+            I enjoy building clean, responsive websites and improving my UI
+            design skills.
+          </p>
+          <p>Skills: HTML, CSS, Flexbox, basic design.</p>
+        </div>
+      </div>
+    </section>
+    <!-- PROJECTS SECTION -->
+    <section id="projects" class="projects">
+      <h2>My Projects</h2>
+
+      <div class="projects-grid">
+        <div class="project-card">
+          <img src="images/project1.jpg" alt="Project 1" />
+          <h3>Profile Card</h3>
+          <p>A simple card UI built with HTML and CSS.</p>
+        </div>
+
+        <div class="project-card">
+          <img src="images/project2.jpg" alt="Project 2" />
+          <h3>Landing Page</h3>
+          <p>A landing page layout built using Flexbox.</p>
+        </div>
+
+        <div class="project-card">
+          <img src="images/project3.jpg" alt="Project 3" />
+          <h3>Calculator UI</h3>
+          <p>A calculator interface using CSS Grid (UI only).</p>
+        </div>
+      </div>
+    </section>
+    <!-- CONTACT SECTION -->
+    <section id="contact" class="contact">
+      <h2>Contact Me</h2>
+
+      <div class="contact-card">
+        <p>
+          <a href="mailto:yourname@example.com">
+            <i class="fas fa-envelope"></i> yourname@example.com
+          </a>
+        </p>
+
+        <p>
+          <a href="https://linkedin.com/in/yourprofile" target="_blank">
+            <i class="fab fa-linkedin"></i> linkedin.com/in/yourprofile
+          </a>
+        </p>
+
+        <p>
+          <a href="https://github.com/yourusername" target="_blank">
+            <i class="fab fa-github"></i> github.com/yourusername
+          </a>
+        </p>
+      </div>
+    </section>
+  </body>
+</html>

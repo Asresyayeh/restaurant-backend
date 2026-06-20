@@ -6,16 +6,19 @@ const {
 
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    // ✅ 1. Add 'role' to your destructuring assignment
+    const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    // ✅ 2. Pass 'role' into your service object payload
     const { user, token } = await registerUserService({
       name,
       email,
       password,
+      role,
     });
 
     res.status(201).json({

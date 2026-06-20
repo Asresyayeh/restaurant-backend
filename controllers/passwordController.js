@@ -16,7 +16,7 @@ const forgotPassword = async (req, res) => {
 const resetPassword = async (req, res) => {
   try {
     const { token } = req.params;
-    const { password } = req.body; // make sure frontend sends { password }
+    const { password } = req.body; 
 
     if (!password) {
       return res.status(400).json({ message: "Password is required" });
