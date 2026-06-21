@@ -1,28 +1,52 @@
 const CateringOrder = require("../models/Catering");
 const Restaurant = require("../models/Restaurant");
-
+const CarteringOrder = require("../models/Catering");
+const Menu = require("../models/Menu");
 
 const createCateringOrder = async (data) => {
   const { restaurant, menuItems, totalPrice, ...customerInfo } = data;
 
-  const rest = await Restaurant.findById(restaurant).populate("menuItem");
+  const rest = await Restaurant.findById(restaurant);
   if (!rest) throw new Error("Restaurant not found");
 
   let calculatedTotal = 0;
-  menuItems.forEach((i) => {
-    const menuItem = rest.menuItem.find((m) => m._id.toString() === i.item);
-    if (menuItem) calculatedTotal += menuItem.price * i.quantity;
-  });
 
-  if (calculatedTotal !== totalPrice) {
-    throw new Error("Total price mismatch");
+  for (const i of menuItems) {
+    const itemTargetId = i.item ? i.item.toString() : "";
+
+    const dbItem = await Menu.findById(itemTargetId);
+
+    if (dbItem) {
+      calculatedTotal += dbItem.price * Number(i.quantity);
+      console.log(
+        `🎯 [CATERING MATCH] Found ${dbItem.name}: $${dbItem.price} x ${i.quantity}`,
+      );
+    } else {
+      console.warn(
+        `⚠️ [CATERING WARNING] Item ID ${itemTargetId} was not found in the database.`,
+      );
+    }
+  }
+
+  // Round both numbers to stop microdecimal variations from breaking comparison checks
+  const finalCalculated = Math.round(calculatedTotal * 100) / 100;
+  const finalExpected = Math.round(Number(totalPrice) * 100) / 100;
+
+  console.log(
+    `📊 [PRICE VERIFICATION] Client: ${finalExpected} | DB Calculated: ${finalCalculated}`,
+  );
+
+  if (finalCalculated !== finalExpected) {
+    throw new Error(
+      `Total price mismatch. Expected ${finalExpected} but calculated ${finalCalculated}`,
+    );
   }
 
   const order = new CateringOrder({
     restaurant,
     restaurantName: rest.name,
     menuItems,
-    totalPrice,
+    totalPrice: finalExpected,
     ...customerInfo,
   });
 

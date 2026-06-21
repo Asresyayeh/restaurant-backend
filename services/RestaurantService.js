@@ -1,4 +1,5 @@
 const Restaurant = require("../models/Restaurant");
+const Menu = require("../models/Menu");
 
 const createRestaurantService = async ({
   name,
@@ -26,11 +27,18 @@ const getAllRestaurantsService = async () => {
 };
 
 const getRestaurantByIdService = async (id) => {
-  const restaurant = await Restaurant.findById(id).populate("menuItem");
+  const restaurant = await Restaurant.findById(id);
+
   if (!restaurant) {
     throw new Error("Restaurant not found");
   }
-  return restaurant;
+
+  const menuItems = await Menu.find({ restaurant: id });
+
+  return {
+    ...restaurant.toObject(),
+    menuItem: menuItems,
+  };
 };
 
 const updateRestaurantService = async (id, updateData) => {

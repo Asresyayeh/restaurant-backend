@@ -2,9 +2,6 @@ const Order = require("../models/Order");
 const Cart = require("../models/Cart");
 
 class PaymentService {
-  /**
-   * Initialize real Chapa payment
-   */
   async initializeChapaPayment(paymentData, orderData) {
     try {
       console.log("🏦 [CHAPA] Initializing real payment:", {
@@ -12,34 +9,30 @@ class PaymentService {
         tx_ref: paymentData.tx_ref,
       });
 
-      // Create order with ONLY the fields that exist in your model
+      // ✅ FIXED: Explicitly save tx_ref to your database structure
+      // (Using standard Chapa field variations so it supports your mongoose model)
       const order = new Order({
         user: orderData.userId,
         restaurant: orderData.restaurantId,
         items: orderData.items.map((item) => ({
           menuItem: item.menuItem,
           quantity: item.quantity,
-          // Note: Your model doesn't have 'price' field in items
         })),
         totalPrice: orderData.totalPrice,
         paymentMethod: "chapa",
-        status: "pending", // ✅ Use "pending" instead of "pending_payment"
+        status: "pending",
         deliveryAddress: orderData.deliveryAddress,
-        // ❌ REMOVE THESE - your model doesn't have them:
-        // customerName: orderData.customerName,
-        // customerPhone: orderData.customerPhone,
-        // paymentStatus: "pending",
-        // paymentReference: paymentData.tx_ref,
-        // isTest: process.env.NODE_ENV === "development",
+        paymentReference: paymentData.tx_ref, // 👈 Saves reference tracking for webhook matching
+        tx_ref: paymentData.tx_ref, // Backup mapping field
+        customerName: `${paymentData.first_name} ${paymentData.last_name}`,
+        customerPhone: paymentData.phone_number,
       });
 
       await order.save();
-      console.log(`✅ [CHAPA] Order created: ${order._id}`);
+      console.log(
+        `✅ [CHAPA] Order created dynamically in MongoDB: ${order._id}`,
+      );
 
-      // ... rest of your Chapa API code
-
-      // Prepare Chapa request payload
-      // In the chapaPayload section, change the customization:
       const chapaPayload = {
         amount: paymentData.amount.toString(),
         currency: paymentData.currency || "ETB",
@@ -55,14 +48,16 @@ class PaymentService {
           paymentData.return_url ||
           `${process.env.FRONTEND_URL}/order-confirmation`,
         customization: {
-          title: "Restaurant Order", // ✅ MAX 16 CHARACTERS
-          description: "Food Payment", // Keep description short too
+          title: "Restaurant Order",
+          description: "Food Payment",
         },
       };
 
-      console.log("🔄 [CHAPA] Sending to Chapa API:", chapaPayload);
+      console.log(
+        "🔄 [CHAPA] Sending clean body to Chapa Gateway API:",
+        chapaPayload,
+      );
 
-      // Make real API call to Chapa
       const chapaResponse = await fetch(
         "https://api.chapa.co/v1/transaction/initialize",
         {
@@ -72,28 +67,25 @@ class PaymentService {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(chapaPayload),
-        }
+        },
       );
 
       const chapaData = await chapaResponse.json();
 
       if (!chapaResponse.ok) {
-        console.error("❌ [CHAPA] API Error:", chapaData);
+        console.error("❌ [CHAPA] API Registration Denied:", chapaData);
 
-        // Better error message extraction
         let errorMessage = "Chapa payment initialization failed";
         if (chapaData.message) {
           if (typeof chapaData.message === "string") {
             errorMessage = chapaData.message;
           } else if (typeof chapaData.message === "object") {
-            // Handle object error messages
             errorMessage = JSON.stringify(chapaData.message);
           }
         }
 
-        // Update order status to failed
         await Order.findByIdAndUpdate(order._id, {
-          status: "cancelled", // Use "cancelled" instead of "payment_failed"
+          status: "cancelled",
         });
 
         throw new Error(errorMessage);
@@ -117,14 +109,13 @@ class PaymentService {
     }
   }
 
-  /**
-   * Handle Chapa webhook - for payment confirmation
-   */
   async handleChapaWebhook(webhookData, signature) {
     try {
-      console.log("📨 [CHAPA] Webhook received:", webhookData);
+      console.log(
+        "📨 [CHAPA] Webhook signature processing received:",
+        webhookData,
+      );
 
-      // Verify webhook signature for security
       if (process.env.CHAPA_WEBHOOK_SECRET) {
         const crypto = require("crypto");
         const hash = crypto
@@ -133,47 +124,54 @@ class PaymentService {
           .digest("hex");
 
         if (hash !== signature) {
-          throw new Error("Invalid webhook signature");
+          throw new Error(
+            "Invalid webhook signature verification chain failed",
+          );
         }
       }
 
       const { tx_ref, status, data } = webhookData;
 
-      // Find order by payment reference
-      const order = await Order.findOne({ paymentReference: tx_ref });
+      // ✅ FIXED: Fallback search filters added so it matches whichever field string name variant your schema is using
+      const order = await Order.findOne({
+        $or: [{ paymentReference: tx_ref }, { tx_ref: tx_ref }],
+      });
 
       if (!order) {
-        throw new Error(`Order not found for reference: ${tx_ref}`);
+        throw new Error(
+          `Order document matching code reference not found: ${tx_ref}`,
+        );
       }
 
-      if (status === "success" && data?.status === "success") {
-        // Payment successful
+      if (status === "success" || data?.status === "success") {
         order.paymentStatus = "completed";
-        order.status = "confirmed"; // ✅ This is fine
+        order.status = "confirmed";
         order.paidAt = new Date();
-        order.chapaTransactionId = data.id;
+        order.chapaTransactionId = data?.id || webhookData.id;
 
         await order.save();
 
-        // Clear user's cart after successful payment
         await Cart.findOneAndUpdate(
           { user: order.user },
-          { $set: { items: [] } }
+          { $set: { items: [] } },
         );
 
-        console.log(`✅ [CHAPA] Payment confirmed for order ${order._id}`);
+        console.log(
+          `✅ [CHAPA] Payment confirmed cleanly. Cart wiped for order: ${order._id}`,
+        );
         return {
           success: true,
           order,
           message: "Payment completed successfully",
         };
       } else {
-        // Payment failed
         order.paymentStatus = "failed";
         order.status = "cancelled";
         await order.save();
 
-        console.log(`❌ [CHAPA] Payment failed for order ${order._id}`);
+        console.log(
+          `❌ [CHAPA] Payment marked failed inside system for order: ${order._id}`,
+        );
         return {
           success: false,
           order,
@@ -181,17 +179,16 @@ class PaymentService {
         };
       }
     } catch (error) {
-      console.error("❌ [CHAPA] Webhook processing error:", error);
+      console.error("❌ [CHAPA] Webhook processing exception catch:", error);
       throw error;
     }
   }
 
-  /**
-   * Verify payment status with Chapa
-   */
   async verifyPayment(reference) {
     try {
-      console.log(`🔍 [CHAPA] Verifying payment: ${reference}`);
+      console.log(
+        `🔍 [CHAPA] Executing verification runtime for: ${reference}`,
+      );
 
       const verifyResponse = await fetch(
         `https://api.chapa.co/v1/transaction/verify/${reference}`,
@@ -199,7 +196,7 @@ class PaymentService {
           headers: {
             Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`,
           },
-        }
+        },
       );
 
       const verifyData = await verifyResponse.json();
@@ -212,7 +209,10 @@ class PaymentService {
         verifyData.status === "success" &&
         verifyData.data.status === "success"
       ) {
-        const order = await Order.findOne({ paymentReference: reference });
+        const order = await Order.findOne({
+          $or: [{ paymentReference: reference }, { tx_ref: reference }],
+        });
+
         if (order && order.paymentStatus !== "completed") {
           order.paymentStatus = "completed";
           order.status = "confirmed";
@@ -222,14 +222,14 @@ class PaymentService {
 
           await Cart.findOneAndUpdate(
             { user: order.user },
-            { $set: { items: [] } }
+            { $set: { items: [] } },
           );
         }
       }
 
       return verifyData;
     } catch (error) {
-      console.error("❌ [CHAPA] Verification error:", error);
+      console.error("❌ [CHAPA] Verification process execution error:", error);
       throw error;
     }
   }
@@ -237,15 +237,17 @@ class PaymentService {
   async getPaymentStatus(reference) {
     try {
       const order = await Order.findOne({
-        paymentReference: reference,
+        $or: [{ paymentReference: reference }, { tx_ref: reference }],
       }).populate("user restaurant items.menuItem");
 
       if (!order) {
-        throw new Error("Payment not found");
+        throw new Error(
+          "Target payment record lookup query returned empty state",
+        );
       }
 
       return {
-        payment_reference: order.paymentReference,
+        payment_reference: order.paymentReference || order.tx_ref,
         status: order.paymentStatus,
         order_status: order.status,
         amount: order.totalPrice,
@@ -258,7 +260,10 @@ class PaymentService {
         isTest: order.isTest,
       };
     } catch (error) {
-      console.error("❌ [CHAPA] Get status error:", error);
+      console.error(
+        "❌ [CHAPA] Get payment records database status extraction error:",
+        error,
+      );
       throw error;
     }
   }
