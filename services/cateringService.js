@@ -28,7 +28,6 @@ const createCateringOrder = async (data) => {
     }
   }
 
-  // Round both numbers to stop microdecimal variations from breaking comparison checks
   const finalCalculated = Math.round(calculatedTotal * 100) / 100;
   const finalExpected = Math.round(Number(totalPrice) * 100) / 100;
 
