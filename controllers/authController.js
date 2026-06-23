@@ -2,6 +2,7 @@ const {
   registerUserService,
   loginUserService,
   getUserProfile,
+  getAllUsers,
 } = require("../services/authService");
 
 const registerUser = async (req, res) => {
@@ -62,8 +63,26 @@ const getProfile = async (req, res) => {
   }
 };
 
+const getAllUsersController = async (req, res) => {
+  try {
+    const users = await getAllUsers();
+
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      data: users,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getProfile,
+  getAllUsersController,
 };
