@@ -7,19 +7,20 @@ const {
 
 const registerUser = async (req, res) => {
   try {
-    // ✅ 1. Add 'role' to your destructuring assignment
-    const { name, email, password, role } = req.body;
+    // ✅ 1. Pull 'restaurantId' along with name, email, password, and role
+    const { name, email, password, role, restaurantId } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // ✅ 2. Pass 'role' into your service object payload
+    // ✅ 2. Pass 'restaurantId' into your service layer
     const { user, token } = await registerUserService({
       name,
       email,
       password,
       role,
+      restaurantId, // Added here
     });
 
     res.status(201).json({
@@ -53,9 +54,12 @@ const loginUser = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
+
 const getProfile = async (req, res) => {
   try {
-    const user = await getUserProfile(req.user._id);
+    // Assuming your auth middleware passes the decoded user info into req.user
+    // If your middleware uses req.user.id instead of req.user._id, adjust accordingly.
+    const user = await getUserProfile(req.user.id || req.user._id);
     res.json(user);
   } catch (err) {
     console.error(err);

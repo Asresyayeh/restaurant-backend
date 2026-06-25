@@ -10,12 +10,18 @@ const authMiddleware = async (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); 
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const user = await User.findById(decoded.id);
     if (!user) throw new Error("User not found");
 
-    req.user = { _id: user._id }; 
+    // ✅ THE FIX: Attach the complete profile fields to req.user
+    req.user = {
+      _id: user._id,
+      role: user.role, // Matches your super_admin check loops
+      restaurantId: user.restaurantId, // Plugs cleanly into your /my-store dashboard engine
+    };
+
     next();
   } catch (err) {
     console.error(err);

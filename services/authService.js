@@ -2,7 +2,13 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const registerUserService = async ({ name, email, password, role }) => {
+const registerUserService = async ({
+  name,
+  email,
+  password,
+  role,
+  restaurantId,
+}) => {
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
@@ -15,11 +21,12 @@ const registerUserService = async ({ name, email, password, role }) => {
     name,
     email,
     password: hashedPassword,
-    role: role || "user",
+    role: role || "customer",
+    restaurantId: restaurantId || null,
   });
 
   const token = jwt.sign(
-    { id: user._id, role: user.role },
+    { id: user._id, role: user.role, restaurantId: user.restaurantId },
     process.env.JWT_SECRET,
     { expiresIn: "7d" },
   );
@@ -29,13 +36,17 @@ const registerUserService = async ({ name, email, password, role }) => {
       id: user._id,
       name: user.name,
       email: user.email,
+      role: user.role,
+      restaurantId: user.restaurantId,
     },
     token,
   };
 };
 
 const loginUserService = async ({ email, password }) => {
-  const user = await User.findOne({ email });
+  // ✅ Added .populate("restaurantId") so the profile object returned on login
+  // immediately carries the restaurant info if needed.
+  const user = await User.findOne({ email }).populate("restaurantId");
 
   if (!user) {
     throw new Error("User not found");
@@ -48,7 +59,11 @@ const loginUserService = async ({ email, password }) => {
   }
 
   const token = jwt.sign(
-    { id: user._id, role: user.role },
+    {
+      id: user._id,
+      role: user.role,
+      restaurantId: user.restaurantId?._id || user.restaurantId,
+    },
     process.env.JWT_SECRET,
     { expiresIn: "1d" },
   );
@@ -59,13 +74,17 @@ const loginUserService = async ({ email, password }) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      restaurantId: user.restaurantId,
     },
     token,
   };
 };
 
 const getUserProfile = async (userId) => {
-  const user = await User.findById(userId).select("-password");
+  // ✅ Added .populate here as well to swap the raw ID string for the actual object data safely
+  const user = await User.findById(userId)
+    .select("-password")
+    .populate("restaurantId");
 
   if (!user) {
     throw new Error("User not found");
@@ -75,7 +94,8 @@ const getUserProfile = async (userId) => {
 };
 
 const getAllUsers = async () => {
-  const users = await User.find().select("-password");
+  // ✅ Added .populate("restaurantId") so your Super Admin view safely resolves the complete map
+  const users = await User.find().select("-password").populate("restaurantId");
 
   return users;
 };

@@ -1,5 +1,8 @@
 const restaurantService = require("../services/RestaurantService");
 
+/**
+ * Creates a new restaurant record
+ */
 const createRestaurant = async (req, res) => {
   try {
     const { name, description, location, image } = req.body;
@@ -30,16 +33,55 @@ const createRestaurant = async (req, res) => {
   }
 };
 
+/**
+ * Fetches all restaurants globally
+ */
 const getAllRestaurants = async (req, res) => {
   try {
     const restaurants = await restaurantService.getAllRestaurantsService();
-    res.status(200).json(restaurants); // array is returned normally
+    res.status(200).json(restaurants);
   } catch (error) {
     console.error(error);
-    res.status(500).json([]); // return empty array on error
+    res.status(500).json([]);
   }
 };
 
+/**
+ * NEW: Fetches custom workplace details for the logged-in Restaurant Admin
+ * Extracted safely from their verified auth session token
+ */
+const getMyRestaurantDetails = async (req, res) => {
+  try {
+    // req.user.restaurantId is extracted directly from the verified JWT by your authMiddleware
+    const myRestaurantId = req.user?.restaurantId;
+
+    if (!myRestaurantId) {
+      return res.status(400).json({
+        success: false,
+        message: "This user account is not linked to any restaurant workspace.",
+      });
+    }
+
+    // Call our unified service layer function to get metadata + menu items
+    const restaurantData =
+      await restaurantService.getRestaurantByIdService(myRestaurantId);
+
+    return res.status(200).json({
+      success: true,
+      data: restaurantData,
+    });
+  } catch (error) {
+    const statusCode = error.message.includes("not found") ? 404 : 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
+ * Fetches a single restaurant by its explicit path parameter ID
+ */
 const getRestaurantById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -50,6 +92,9 @@ const getRestaurantById = async (req, res) => {
   }
 };
 
+/**
+ * Updates an existing restaurant record
+ */
 const updateRestaurant = async (req, res) => {
   try {
     const { id } = req.params;
@@ -62,7 +107,7 @@ const updateRestaurant = async (req, res) => {
 
     const restaurant = await restaurantService.updateRestaurantService(
       id,
-      updateData
+      updateData,
     );
 
     res.status(200).json({
@@ -70,10 +115,13 @@ const updateRestaurant = async (req, res) => {
       restaurant,
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    rm.status(400).json({ message: error.message });
   }
 };
 
+/**
+ * Deletes a restaurant record
+ */
 const deleteRestaurant = async (req, res) => {
   try {
     const { id } = req.params;
@@ -84,9 +132,11 @@ const deleteRestaurant = async (req, res) => {
   }
 };
 
+// All methods are explicitly mapped for your Router file to read cleanly
 module.exports = {
   createRestaurant,
   getAllRestaurants,
+  getMyRestaurantDetails, // Added safely here!
   getRestaurantById,
   updateRestaurant,
   deleteRestaurant,

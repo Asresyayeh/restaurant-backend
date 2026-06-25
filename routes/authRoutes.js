@@ -10,4 +10,10 @@ router.get("/profile", authMiddleware, authController.getProfile);
 
 router.get("/", authMiddleware, authController.getAllUsersController);
 
+router.post(
+  "/create-restaurant-admin",
+  authMiddleware,
+  authController.registerUser,
+);
+
 module.exports = router;

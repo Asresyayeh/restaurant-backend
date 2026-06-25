@@ -17,13 +17,14 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["user", "admin"],
-      default: "user",
+      // Clearer role separation
+      enum: ["customer", "restaurant_admin", "admin"],
+      default: "customer",
     },
-
     restaurantId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Restaurant",
+      // Keep it default null, because super_admins and customers don't belong to a restaurant
       default: null,
     },
   },
@@ -31,5 +32,4 @@ const userSchema = new mongoose.Schema(
 );
 
 const User = mongoose.model("User", userSchema);
-
 module.exports = User;
